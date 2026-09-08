@@ -372,6 +372,7 @@ namespace XMAT.WebServiceCapture
                 DeviceName))
             {
                 ProxyConnections.AddFromDataRecord(record, false);
+                ApplyRetentionLimit();
             }
         }
 
@@ -383,6 +384,39 @@ namespace XMAT.WebServiceCapture
                 DeviceName))
             {
                 ProxyConnections.UpdateFromDataRecord(record);
+            }
+        }
+
+        internal void ApplyRetentionLimit()
+        {
+            var preferences = CaptureMethod.PreferencesModel as PreferencesModel;
+            if (_readOnly ||
+                preferences == null ||
+                !preferences.AppliedLimitRetainedCalls ||
+                ProxyConnections.Count <= preferences.AppliedMaximumRetainedCalls)
+            {
+                return;
+            }
+
+            int excessCallCount =
+                ProxyConnections.Count - preferences.AppliedMaximumRetainedCalls;
+            IReadOnlyList<Int64> removedRowIds = _dataTable.RemoveOldestRows(
+                excessCallCount,
+                new FieldValue<string>(
+                    WebServiceCaptureMethod.FieldKey_DeviceName,
+                    DeviceName));
+
+            if (removedRowIds.Count == 0)
+            {
+                return;
+            }
+
+            IReadOnlyList<ProxyConnectionModel> removedModels =
+                ProxyConnections.RemoveByRowIds(removedRowIds);
+
+            if (SelectedConnectionModel != null && removedModels.Contains(SelectedConnectionModel))
+            {
+                SelectedConnectionModel = null;
             }
         }
 
@@ -469,7 +503,15 @@ namespace XMAT.WebServiceCapture
                 new FieldValue<string>(WebServiceCaptureMethod.FieldKey_DeviceName, DeviceName),
                 new FieldValue<long>(WebServiceCaptureMethod.FieldKey_RequestNumber, completionEvent.Request.RequestNumber),
                 new FieldValue<long>(WebServiceCaptureMethod.FieldKey_ConnectionId, completionEvent.ConnectionID)
-            ).First();
+            ).FirstOrDefault();
+
+            if (record == null)
+            {
+                PublicUtilities.AppLog(
+                    LogLevel.DEBUG,
+                    $"Ignoring response for evicted request {completionEvent.Request.RequestNumber}.");
+                return;
+            }
 
             _dataTable.UpdateRow(
                 record.RowId,

@@ -54,8 +54,62 @@ namespace XMAT.WebServiceCapture.Models
                 int requestNumber = (int)dataRecord.Int(WebServiceCaptureMethod.FieldKey_RequestNumber);
                 int connectionId = (int)dataRecord.Int(WebServiceCaptureMethod.FieldKey_ConnectionId);
 
-                _requestToConnection[requestNumber].UpdateFromDataRecord(dataRecord);
-                return _requestToConnection[requestNumber];
+                if (!_requestToConnection.TryGetValue(requestNumber, out ProxyConnectionModel model))
+                {
+                    return null;
+                }
+
+                model.UpdateFromDataRecord(dataRecord);
+                return model;
+            }
+        }
+
+        internal IReadOnlyList<ProxyConnectionModel> RetainNewest(int maximumCount)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(maximumCount);
+
+            lock (_lockObj)
+            {
+                int removeCount = Math.Max(0, Count - maximumCount);
+                var removed = new List<ProxyConnectionModel>(removeCount);
+
+                for (int i = 0; i < removeCount; i++)
+                {
+                    ProxyConnectionModel model = this[0];
+                    removed.Add(model);
+                    _requestToConnection.Remove((int)model.RequestNumber);
+                    RemoveAt(0);
+                }
+
+                return removed;
+            }
+        }
+
+        internal IReadOnlyList<ProxyConnectionModel> RemoveByRowIds(
+            IEnumerable<Int64> rowIds)
+        {
+            ArgumentNullException.ThrowIfNull(rowIds);
+
+            lock (_lockObj)
+            {
+                var rowIdSet = new HashSet<Int64>(rowIds);
+                var removed = new List<ProxyConnectionModel>();
+
+                for (int i = Count - 1; i >= 0; i--)
+                {
+                    ProxyConnectionModel model = this[i];
+                    if (!rowIdSet.Contains(model.RecordRowId))
+                    {
+                        continue;
+                    }
+
+                    removed.Add(model);
+                    _requestToConnection.Remove((int)model.RequestNumber);
+                    RemoveAt(i);
+                }
+
+                removed.Reverse();
+                return removed;
             }
         }
 

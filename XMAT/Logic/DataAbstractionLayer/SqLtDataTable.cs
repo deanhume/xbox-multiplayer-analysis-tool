@@ -147,6 +147,74 @@ namespace XMAT.DataAbstractionLayer
             }
         }
 
+        public IReadOnlyList<Int64> RemoveOldestRows(int rowCount, params IFieldValue[] fieldNamesAndValues)
+        {
+            if (rowCount <= 0)
+            {
+                return Array.Empty<Int64>();
+            }
+
+            lock (_lockObj)
+            {
+                _commandBuilder.Clear();
+                _command.Parameters.Clear();
+                _commandBuilder.Append($"DELETE FROM {_name} WHERE id IN (");
+                _commandBuilder.Append($"SELECT id FROM {_name}");
+
+                if (fieldNamesAndValues != null && fieldNamesAndValues.Length > 0)
+                {
+                    _commandBuilder.Append(" WHERE ");
+
+                    var filters = new List<string>();
+                    for (int i = 0; i < fieldNamesAndValues.Length; i++)
+                    {
+                        IFieldValue fieldValue = fieldNamesAndValues[i]
+                            ?? throw new ArgumentException("Field values cannot contain null entries.", nameof(fieldNamesAndValues));
+
+                        if (!_fieldDefinitions.ContainsKey(fieldValue.Name))
+                        {
+                            throw new ArgumentException($"Unknown field '{fieldValue.Name}'.", nameof(fieldNamesAndValues));
+                        }
+
+                        string parameterName = $"$filter{i}";
+                        filters.Add($"{fieldValue.Name} = {parameterName}");
+                        _command.Parameters.AddWithValue(parameterName, fieldValue.Value);
+                    }
+
+                    _commandBuilder.Append(string.Join(" AND ", filters));
+                }
+
+                _commandBuilder.Append(" ORDER BY id ASC LIMIT $rowCount)");
+                _commandBuilder.Append(" RETURNING id");
+                _command.Parameters.AddWithValue("$rowCount", rowCount);
+                _command.CommandText = _commandBuilder.ToString();
+
+                try
+                {
+                    var rowIds = new List<Int64>();
+                    using (SqliteDataReader reader = _command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            rowIds.Add(reader.GetInt64(0));
+                        }
+                    }
+
+                    if (rowIds.Count > 0)
+                    {
+                        rowIds.Sort();
+                        RowsRemoved?.Invoke(this, rowIds.Count);
+                    }
+
+                    return rowIds;
+                }
+                finally
+                {
+                    _command.Parameters.Clear();
+                }
+            }
+        }
+
         private IDataset GetDataset()
         {
             lock (_lockObj)

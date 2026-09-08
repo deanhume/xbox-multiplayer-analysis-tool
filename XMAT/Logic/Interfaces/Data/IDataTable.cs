@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 using System;
+using System.Collections.Generic;
 
 namespace XMAT.SharedInterfaces
 {
@@ -47,5 +48,8 @@ namespace XMAT.SharedInterfaces
         // - any of fieldNamesAndValues that are null or empty are ignored
         // - any non-existent fields in fieldNamesAndValues are ignored
         void RemoveRowsWhere(params IFieldValue[] fieldNamesAndValues);
+
+        // Removes up to rowCount oldest rows matching all supplied field values.
+        IReadOnlyList<Int64> RemoveOldestRows(int rowCount, params IFieldValue[] fieldNamesAndValues);
     }
 }

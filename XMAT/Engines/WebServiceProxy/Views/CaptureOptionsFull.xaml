@@ -21,5 +21,23 @@
             <TextBlock x:Name="PortRangeLabel" TextAlignment="Left" Text=" to "/>
             <TextBox x:Name="EndingPort" Width="50" Text="{Binding LastPort}" HorizontalContentAlignment="Center"/>
         </StackPanel>
+        <StackPanel Orientation="Vertical" HorizontalAlignment="Left" Margin="0,10,0,0">
+            <TextBlock x:Name="RetentionLabel" FontWeight="Bold" Text="Passive Capture"/>
+            <CheckBox x:Name="LimitRetainedCallsLabel"
+                      IsChecked="False">
+                Limit retained calls
+            </CheckBox>
+            <StackPanel Orientation="Horizontal" Margin="20,2,0,0">
+                <TextBlock x:Name="MaximumRetainedCallsLabel"
+                           VerticalAlignment="Center"
+                           Text="Keep latest"/>
+                <TextBox x:Name="MaximumRetainedCallsText" Width="80" Margin="6,0"
+                         IsEnabled="{Binding IsChecked, ElementName=LimitRetainedCallsLabel}"
+                         HorizontalContentAlignment="Right"/>
+                <TextBlock x:Name="CallsLabel"
+                           VerticalAlignment="Center"
+                           Text="calls"/>
+            </StackPanel>
+        </StackPanel>
     </StackPanel>
 </UserControl>

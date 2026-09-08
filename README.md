@@ -152,6 +152,10 @@ will dynamically update. Toggling between “ALL/NONE” allows for including or
 values in the connections list. Status codes that are equal to or above 400 are color coded (to red) as they
 indicate an error condition.
 
+Long-running passive captures can be bounded from **Preferences > Web Proxy** by enabling
+**Limit retained calls** and selecting the maximum number of recent calls to keep. Older calls are
+removed from both the capture view and saved or analyzed capture data.
+
 ![](./ReadmeImages/10.png)
 _Screenshot of filtering also by status to further prune connections._
 
